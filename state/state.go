@@ -1,6 +1,8 @@
 package state
 
 import (
+	"encoding/json"
+	"github.com/chengz0/xmuses/funcs"
 	"github.com/chengz0/xmuses/global"
 	"github.com/deepglint/go-dockerclient"
 	"github.com/go-martini/martini"
@@ -10,18 +12,9 @@ import (
 	"net/http"
 )
 
-type ContainerStateStruct struct {
-	Id       string
-	Image    string
-	Cmd      []string
-	Running  bool
-	ExitCode int
-}
-
 var (
-	martini_m     *martini.ClassicMartini
-	client        *docker.Client
-	ContainersMap map[string]ContainerStateStruct
+	martini_m *martini.ClassicMartini
+	client    *docker.Client
 )
 
 func StartMartini() {
@@ -37,12 +30,11 @@ func StartMartini() {
 	}))
 
 	// system state
-	martini_m.Get("/system", func() bool {
-		return true
+	martini_m.Get("/system", func() string {
+		return "true"
 	})
 
 	// docker client
-	ContainersMap = make(map[string]ContainerStateStruct)
 	client, err := docker.NewClient("http://" + global.Host + ":4243")
 	if err != nil {
 		log.Printf("Error creating client: %s", err.Error())
@@ -50,24 +42,66 @@ func StartMartini() {
 	}
 	log.Println(client.Version())
 
-	Containers(client)
+	funcs.Containers(client)
 
-	// docker container state
-	martini_m.Get("/container/:name", func(params martini.Params) bool {
-		name := params["name"]
-		state := ContainerState(client, name)
-		log.Println(state)
-		return state
-	})
+	go funcs.InitContainerEvent(client)
 
-	martini_m.Get("/containers", func() map[string]bool {
-		ret := make(map[string]bool)
-		for k, v := range ContainersMap {
-			ret[k] = v.Running
+	// // docker container state
+	// martini_m.Get("/container/:name", func(params martini.Params) string {
+	// 	name := params["name"]
+	// 	state := funcs.ContainerState(client, name)
+	// 	if state {
+	// 		return "true"
+	// 	} else {
+	// 		return "false"
+	// 	}
+	// })
+
+	martini_m.Get("/containers", func() string {
+		ret, err := json.Marshal(funcs.ContainersMap)
+		if err != nil {
+			log.Printf("Error marshalling containers: %s", err.Error())
+			return ""
 		}
-		log.Println(ret)
-		return ret
+		return string(ret)
 	})
+
+	EventRouter()
 
 	http.ListenAndServe(":3000", martini_m)
+}
+
+type Dto struct {
+	Succ bool
+	Msg  string
+	Data interface{}
+}
+
+func ErrDto(message string) Dto {
+	return Dto{Succ: false, Msg: message}
+}
+
+func DataDto(d interface{}) Dto {
+	return Dto{Succ: true, Msg: "", Data: d}
+}
+
+func RenderErrDto(message string) string {
+	dto := ErrDto(message)
+	bs, err := json.Marshal(dto)
+	if err != nil {
+		return err.Error()
+	} else {
+		return string(bs)
+	}
+}
+
+func RenderDataDto(d interface{}) string {
+	dto := DataDto(d)
+	bs, err := json.Marshal(dto)
+
+	if err != nil {
+		return err.Error()
+	} else {
+		return string(bs)
+	}
 }

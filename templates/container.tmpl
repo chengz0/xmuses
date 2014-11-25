@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html class=''>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name="robots" content="noindex">
+    <link rel="canonical" href="http://codepen.io/chengz0/pen/ByyXrX" />
+
+    <link rel="stylesheet" type="text/css" href="../public/css/container/container.css" />
+</head>
+
+<body>
+    <div>
+        <ul class="homes-list">
+            <li class="stop" id="test">test</li>
+            <li class="stop" id="ubuntu">ubuntu</li>
+            <li class="start" id="libra">libra</li>
+            <li class="start" id="weedmaster">weedmaster</li>
+            <li class="start" id="weedvolume1">weedvolume1</li>
+            <li class="start" id="redis">redis</li>
+            <li class="stop" id="nsqd">nsqd</li>
+            <li class="start" id="sensorcloud">sensorcloud</li>
+            <li class="start" id="eventupload">eventupload</li>
+            <li class="start" id="sliceserver">sliceserver</li>
+            <li class="start" id="sliceupload">sliceupload</li>
+            <li class="start" id="dockermanager">dockermanager</li>
+            <li class="start" id="dockermonitor">dockermonitor</li>
+            <li class="start" id="nsqclassifier">nsqclassifier</li>
+            <li class="missing" id="influxdb">influxdb</li>
+            <li class="missing" id="cadvisor">cadvisor</li>
+            <li class="missing" id="stats">stats</li>
+            <li class="missing" id="elasticsearch">elasticsearch</li>
+            <li class="missing" id="kibana3">kibana3</li>
+            <li class="stop" id="fluentd">fluentd</li>
+            <li class="stop" id="rawetcd">rawetcd</li>
+            <li class="pause" id="dgetcd">dgetcd</li>
+            <li class="pause" id="ntpsync">ntpsync</li>
+            <li class="die" id="runtimeserver">runtimeserver</li>
+            <li class="die" id="scheduler">scheduler</li>
+        </ul>
+    </div>
+    <script src='../public/js/container/css_live_reload_init.js'></script>
+    <script src="../public/js/jquery.js" type="text/javascript"></script>
+    <!-- <script src="../gopherjs/docker_event_js.js" type="text/javascript"></script>-->
+    <script type="text/javascript">
+    (function poll() {
+        setTimeout(function() {
+            $.ajax({
+                url: "http://172.16.110.134:3000/container/events",
+                success: function(data) {
+                    // var dataobj = JSON.parse(data.Data);
+                    $.each(data.Data, function(index, val) {
+                        /* iterate through array or object */
+                        var curcontainer = document.getElementById(index);
+                        if (curcontainer != null) {
+                            console.log(index, val);
+                            curcontainer.className = val;
+                        };
+                    });
+                },
+                dataType: "json",
+                complete: poll
+            });
+        }, 30000);
+    })();
+
+    // init containers
+    function initcontainers() {
+        var xmlHttp = null;
+        if (window.XMLHttpRequest) { // Mozilla, Safari, IE7+ ...
+            xmlHttp = new XMLHttpRequest();
+        } else if (window.ActiveXObject) { // IE 6 and older
+            xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        xmlHttp.open("GET", "http://172.16.110.134:3000/containers", true);
+        xmlHttp.send();
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState === 4) {
+                console.log(xmlHttp.readyState);
+                if (xmlHttp.status === 200) {
+                    console.log(xmlHttp.status);
+                    var ret = xmlHttp.responseText;
+                    var retobj = JSON.parse(ret);
+                    // console.log(ret["ubuntu"]);
+                    $.each(retobj, function(key, value) {
+                        if (value["Running"]) {
+                            var curcontainer = document.getElementById(key);
+                            // curcontainer.style.backgroundColor = "#D93600";
+                            if (curcontainer != null) {
+                                curcontainer.className = "start";
+                            };
+                        };
+                    });
+                } else {
+                    console.log('There was a problem with the request.');
+                }
+            }
+        }
+    }
+
+    $(document).ready(function() {
+        initcontainers();
+    });
+    </script>
+</body>
+
+</html>
